@@ -108,37 +108,13 @@ module Shop
       REGIONS.dig(region_code.upcase, :countries) || []
     end
 
-    TIMEZONE_TO_REGION = {
-      # United States
-      "America/New_York" => "US", "America/Chicago" => "US", "America/Denver" => "US",
-      "America/Los_Angeles" => "US", "America/Phoenix" => "US", "America/Anchorage" => "US",
-      "Pacific/Honolulu" => "US", "America/Detroit" => "US", "America/Indiana/Indianapolis" => "US",
-      # Canada
-      "America/Toronto" => "CA", "America/Vancouver" => "CA", "America/Edmonton" => "CA",
-      "America/Winnipeg" => "CA", "America/Halifax" => "CA", "America/St_Johns" => "CA",
-      # United Kingdom
-      "Europe/London" => "UK",
-      # EU countries
-      "Europe/Paris" => "EU", "Europe/Berlin" => "EU", "Europe/Rome" => "EU",
-      "Europe/Madrid" => "EU", "Europe/Amsterdam" => "EU", "Europe/Brussels" => "EU",
-      "Europe/Vienna" => "EU", "Europe/Stockholm" => "EU", "Europe/Copenhagen" => "EU",
-      "Europe/Helsinki" => "EU", "Europe/Warsaw" => "EU", "Europe/Prague" => "EU",
-      "Europe/Budapest" => "EU", "Europe/Athens" => "EU", "Europe/Bucharest" => "EU",
-      "Europe/Sofia" => "EU", "Europe/Dublin" => "EU", "Europe/Lisbon" => "EU",
-      "Europe/Zagreb" => "EU", "Europe/Ljubljana" => "EU", "Europe/Bratislava" => "EU",
-      "Europe/Tallinn" => "EU", "Europe/Riga" => "EU", "Europe/Vilnius" => "EU",
-      "Europe/Luxembourg" => "EU", "Europe/Malta" => "EU",
-      # India
-      "Asia/Kolkata" => "IN", "Asia/Calcutta" => "IN",
-      # Australia/NZ
-      "Australia/Sydney" => "AU", "Australia/Melbourne" => "AU", "Australia/Brisbane" => "AU",
-      "Australia/Perth" => "AU", "Australia/Adelaide" => "AU", "Australia/Hobart" => "AU",
-      "Pacific/Auckland" => "AU", "Pacific/Fiji" => "AU"
-    }.freeze
+    TIMEZONE_TO_COUNTRY = TZInfo::Country.all.each_with_object({}) do |country, map|
+      country.zone_identifiers.each { |tz_id| map[tz_id] ||= country.code }
+    end.freeze
 
     def self.timezone_to_region(timezone)
       return "XX" if timezone.blank?
-      TIMEZONE_TO_REGION[timezone] || "XX"
+      country_to_region(TIMEZONE_TO_COUNTRY[timezone])
     end
   end
 end
