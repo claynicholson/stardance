@@ -87,5 +87,5 @@
 #  fk_rails_...  (user_id => users.id)
 #
 class ShopItem::HCBGrant < ShopItem
-  include Shop::HcbGrantFulfillable
+  include Shop::HCBGrantFulfillable
 end

@@ -1,4 +1,4 @@
-module Shop::HcbGrantFulfillable
+module Shop::HCBGrantFulfillable
   extend ActiveSupport::Concern
 
   included do
