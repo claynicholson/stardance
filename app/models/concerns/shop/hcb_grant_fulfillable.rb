@@ -109,8 +109,7 @@ module Shop::HcbGrantFulfillable
   def extra_grant_options = {}
 
   def hcb_locks_changed?
-    type == "ShopItem::HCBGrant" &&
-      saved_change_to_hcb_merchant_lock? ||
+    saved_change_to_hcb_merchant_lock? ||
       saved_change_to_hcb_keyword_lock? ||
       saved_change_to_hcb_category_lock?
   end
