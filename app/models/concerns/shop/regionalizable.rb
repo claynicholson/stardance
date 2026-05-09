@@ -17,14 +17,6 @@ module Shop
 
     REGION_CODES = REGIONS.keys.freeze
 
-    class_methods do
-      def region_columns
-        @region_columns ||= REGION_CODES.flat_map do |code|
-          [ "enabled_#{code.downcase}", "usd_offset_#{code.downcase}" ]
-        end
-      end
-    end
-
     included do
       # Define scope methods for each region
       REGION_CODES.each do |code|
@@ -83,10 +75,6 @@ module Shop
       discount_multiplier = (100 - sale_percentage) / 100.0
       discounted_price = price * discount_multiplier
       discounted_price.ceil
-    end
-
-    def regions_enabled
-      enabled_region_codes
     end
 
     def self.country_to_region(country_code)
