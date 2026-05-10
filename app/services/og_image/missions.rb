@@ -1,17 +1,21 @@
 module OgImage
-  # Minimal mission OG image: uses the mission's banner attachment when
-  # present, otherwise renders a placeholder with the mission name. Full
-  # art direction is deferred — this exists so the `<meta og:image>` link in
-  # missions/show resolves to a 1200×630 PNG instead of 404'ing on social
-  # previews.
   class Missions < Base
     PREVIEWS = {
-      "default" => -> { new(sample_mission) }
+      "default" => -> { new(sample_mission) },
+      "with_description" => -> { new(sample_mission(description: "Build a collection of micro-games inspired by WarioWare. Each game should last 5 seconds or less and chain together into a frantic sequence.")) },
+      "long_name" => -> { new(sample_mission(name: "Build Your Own Programming Language From Scratch")) }
     }.freeze
 
+    STREAK_PATH = Rails.root.join("app", "assets", "images", "landing", "done-before", "star-bg.png").to_s
+
     class << self
-      def sample_mission
-        OpenStruct.new(name: "Wario-Ware Clone", banner: nil)
+      def sample_mission(name: "Wario-Ware Clone", description: nil, banner: nil, icon: nil)
+        OpenStruct.new(
+          name: name,
+          description: description || "Create a fast-paced collection of micro-games that chain together.",
+          banner: banner,
+          icon: icon
+        )
       end
     end
 
@@ -22,52 +26,75 @@ module OgImage
 
     def render
       if @mission.banner&.attached?
-        download_attachment(@mission.banner) || render_placeholder
+        download_attachment(@mission.banner) || render_designed
       else
-        render_placeholder
+        render_designed
       end
     end
 
     private
 
-    def render_placeholder
-      path = temp_path("mission_bg")
-      MiniMagick::Tool.new("convert") do |convert|
-        convert.size("#{WIDTH}x#{HEIGHT}")
-        convert << "xc:#0d0a26"
-        convert.gravity("center")
-        convert.fill("#ffffff")
-        convert.font(default_font_path)
-        convert.pointsize(96)
-        convert.draw("text 0,0 '#{escape_text(truncate_text(@mission.name, 40))}'")
-        convert << path
+    def render_designed
+      create_stardance_canvas
+      place_image(STREAK_PATH, x: -50, y: -40, width: 700, height: 400, cover: false) if File.exist?(STREAK_PATH)
+      draw_diagonal_scrim(opacity: 0.85)
+      place_stardance_logo(x: 70, y: 55, width: 240, height: 68)
+      place_icon_or_star
+      draw_mission_label
+      draw_mission_name
+      draw_description
+    end
+
+    def place_icon_or_star
+      if @mission.respond_to?(:icon) && @mission.icon.respond_to?(:attached?) && @mission.icon.attached?
+        place_image(@mission.icon, x: 80, y: 80, width: 300, height: 300, gravity: "NorthEast", rounded: true, radius: 24)
+      else
+        place_star_character(x: 80, y: 100, width: 260, height: 260, gravity: "NorthEast")
       end
-      @image = MiniMagick::Image.open(path)
-      @image
+    end
+
+    def draw_mission_label
+      draw_soft_shadow("MISSION", x: 70, y: 170, size: 24, radius: 4, opacity: 0.7)
+      draw_text("MISSION", x: 70, y: 170, size: 24, color: "#81ffff")
+    end
+
+    def draw_mission_name
+      lines = wrap_text(@mission.name, 20).take(3)
+      spacing = (64 * 1.3).to_i
+      lines.each_with_index do |line, i|
+        draw_soft_shadow(line, x: 70, y: 210 + (i * spacing), size: 64, font: title_font_name, radius: 8, opacity: 0.7)
+      end
+
+      @name_lines = draw_glowing_multiline_text(
+        @mission.name,
+        x: 70, y: 210, size: 64,
+        color: "#fffcf4", glow_color: "#ebb7ff",
+        max_chars: 20, max_lines: 3,
+        glow_radius: 8, glow_opacity: 0.35,
+        font: title_font_name
+      )
+    end
+
+    def draw_description
+      desc = @mission.respond_to?(:description) ? @mission.description : nil
+      return unless desc.present?
+
+      start_y = 210 + (@name_lines * 64 * 1.3).to_i + 15
+      lines = wrap_text(desc, 42).take(2)
+      lines.each_with_index do |line, i|
+        draw_soft_shadow(line, x: 70, y: start_y + (i * (28 * 1.3).to_i), size: 28, radius: 4, opacity: 0.5)
+      end
+      draw_multiline_text(desc, x: 70, y: start_y, size: 28, color: "#c9c9c9", max_chars: 42, max_lines: 2, line_height: 1.3)
     end
 
     def download_attachment(attachment)
-      tempfile = Tempfile.new([ "mission_banner", ".bin" ])
-      tempfile.binmode
-      tempfile.write(attachment.download)
-      tempfile.rewind
-      @image = MiniMagick::Image.open(tempfile.path)
-      @image.resize("#{WIDTH}x#{HEIGHT}^")
-      @image.gravity("center")
-      @image.crop("#{WIDTH}x#{HEIGHT}+0+0")
-      @image.repage("+0+0")
+      data = attachment.download
+      @image = Vips::Image.new_from_buffer(data, "")
+      @image = resize_image(@image, WIDTH, HEIGHT, cover: true)
       @image
     rescue StandardError => e
       Rails.logger.warn("OgImage::Missions: Failed to use banner: #{e.message}")
       nil
-    ensure
-      tempfile&.close
-      tempfile&.unlink
-    end
-
-    def default_font_path
-      # Mirrors fallback used elsewhere in OgImage::Base.
-      "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
     end
   end
 end

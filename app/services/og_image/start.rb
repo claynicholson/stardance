@@ -6,8 +6,8 @@ module OgImage
 
     def render
       welcome_path = Rails.root.join("app", "assets", "images", "welcome.png").to_s
-      @image = MiniMagick::Image.open(welcome_path)
-      @image.resize("#{WIDTH}x#{HEIGHT}!")
+      @image = Vips::Image.new_from_file(welcome_path, access: :sequential)
+      @image = @image.resize(WIDTH.to_f / @image.width, vscale: HEIGHT.to_f / @image.height)
     end
   end
 end

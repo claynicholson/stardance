@@ -25,15 +25,10 @@ module OgImage
     end
 
     def render
-      create_patterned_canvas(
-        frame_color: "#b0805f",
-        card_color: "#7a4b40",
-        inset: 26,
-        card_radius: 42
-      )
+      create_stardance_canvas
 
       draw_thumbnail
-      draw_hack_club_flag
+      place_stardance_logo(x: 80, y: 60, width: 240, height: 68)
       draw_title
       draw_subtitle
     end
@@ -41,16 +36,20 @@ module OgImage
     private
 
     def draw_title
-      lines_drawn = draw_multiline_text(
+      lines_drawn = draw_glowing_multiline_text(
         @project.title,
         x: 80,
         y: 170,
         size: 72,
-        color: "#fde8d1",
+        color: "#fffcf4",
+        glow_color: "#81ffff",
         max_chars: 18,
-        max_lines: 3
+        max_lines: 3,
+        glow_radius: 6,
+        glow_opacity: 0.3,
+        font: title_font_name
       )
-      @title_end_y = 170 + (lines_drawn * 54 * 1.25).to_i
+      @title_end_y = 170 + (lines_drawn * 72 * 1.3).to_i
     end
 
     def draw_subtitle
@@ -66,7 +65,7 @@ module OgImage
           x: 80,
           y: start_y,
           size: 42,
-          color: "#e3d0ab"
+          color: "#ebb7ff"
         )
       end
 
@@ -92,7 +91,7 @@ module OgImage
           x: text_x,
           y: stats_start_y + (index * 52),
           size: 42,
-          color: "#d0ad8b"
+          color: "#95dbff"
         )
       end
     end
@@ -118,18 +117,6 @@ module OgImage
 
     def logo_path
       Rails.root.join("app", "assets", "images", "flavortown_logo.png").to_s
-    end
-
-    def draw_hack_club_flag
-      place_image(
-        "https://assets.hackclub.com/flag-standalone.png",
-        x: 80,
-        y: 60,
-        width: 180,
-        height: 80,
-        gravity: "NorthWest",
-        cover: false
-      )
     end
 
     def build_stats

@@ -32,15 +32,7 @@ module OgImage
       require "open-uri"
       URI.open("https://placecats.com/400/400").read
     rescue StandardError
-      path = Rails.root.join("tmp", "mock_avatar_#{SecureRandom.hex(4)}.png").to_s
-      MiniMagick::Tool.new("convert") do |convert|
-        convert.size("400x400")
-        convert << "xc:#e8d5b7"
-        convert << path
-      end
-      data = File.binread(path)
-      FileUtils.rm_f(path)
-      data
+      Vips::Image.black(400, 400).draw_rect([ 232, 213, 183 ], 0, 0, 400, 400, fill: true).pngsave_buffer
     end
   end
 
@@ -68,41 +60,47 @@ module OgImage
     end
 
     def render
-      create_patterned_canvas
+      create_stardance_canvas
 
       draw_avatar
-      draw_hack_club_flag
+      place_stardance_logo(x: 60, y: 45, width: 200, height: 56)
       draw_title
       draw_subtitle
+      place_star_character(x: 30, y: 20, width: 120, height: 120, gravity: "SouthWest")
     end
 
     private
 
     def draw_title
-      lines_drawn = draw_multiline_text(
+      lines_drawn = draw_glowing_multiline_text(
         "@#{@user.display_name}",
         x: 80,
-        y: 115,
-        size: 86,
-        color: "#4d3228",
+        y: 130,
+        size: 82,
+        color: "#ffe564",
+        glow_color: "#ffe564",
         max_chars: 14,
-        max_lines: 2
+        max_lines: 2,
+        glow_radius: 8,
+        glow_opacity: 0.35,
+        font: title_font_name
       )
-      @title_end_y = 115 + (lines_drawn * 86 * 1.3).to_i
+      @title_end_y = 130 + (lines_drawn * 82 * 1.3).to_i
     end
 
     def draw_subtitle
       stats = build_stats
       return if stats.empty?
 
+      colors = [ "#81ffff", "#ebb7ff", "#95dbff", "#ffd598" ]
       start_y = @title_end_y + 10
       stats.each_with_index do |stat, index|
         draw_text(
           stat,
           x: 80,
-          y: start_y + (index * 42),
+          y: start_y + (index * 44),
           size: 34,
-          color: "#5c4033"
+          color: colors[index % colors.length]
         )
       end
     end
@@ -117,18 +115,6 @@ module OgImage
         gravity: "NorthEast",
         rounded: true,
         radius: 24
-      )
-    end
-
-    def draw_hack_club_flag
-      place_image(
-        "https://assets.hackclub.com/flag-orpheus-top.png",
-        x: 20,
-        y: 0,
-        width: 300,
-        height: 360,
-        gravity: "NorthWest",
-        cover: false
       )
     end
 
