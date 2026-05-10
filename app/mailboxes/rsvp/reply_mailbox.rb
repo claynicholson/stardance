@@ -34,9 +34,13 @@ class Rsvp::ReplyMailbox < ApplicationMailbox
   def should_forward?
     Rails.logger.debug("[Rsvp::ReplyMailbox] Checking if should forward. public_address?: #{public_address?}, stop_requested?: #{stop_requested?}")
     return false unless public_address?
+    return false if parse_cell.present?
     return false if stop_requested?
 
     text = visible_reply.to_s.strip
+    first_line = text.split("\n").first.to_s.strip
+    return false if first_line.match?(/\A[1-9]\z/)
+
     downcased_clean = text.downcase.gsub(/[[:punct:]]/, "")
     Rails.logger.debug("[Rsvp::ReplyMailbox] Text for AI: #{text.inspect}")
 
