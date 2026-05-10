@@ -32,16 +32,16 @@ class Rsvp::ReplyMailbox < ApplicationMailbox
   private
 
   def should_forward?
-    Rails.logger.info("[Rsvp::ReplyMailbox] Checking if should forward. public_address?: #{public_address?}, stop_requested?: #{stop_requested?}")
+    Rails.logger.debug("[Rsvp::ReplyMailbox] Checking if should forward. public_address?: #{public_address?}, stop_requested?: #{stop_requested?}")
     return false unless public_address?
     return false if stop_requested?
 
     text = visible_reply.to_s.strip
     downcased_clean = text.downcase.gsub(/[[:punct:]]/, "")
-    Rails.logger.info("[Rsvp::ReplyMailbox] Text for AI: #{text.inspect}")
+    Rails.logger.debug("[Rsvp::ReplyMailbox] Text for AI: #{text.inspect}")
 
     if downcased_clean == "hey stardance"
-      Rails.logger.info("[Rsvp::ReplyMailbox] Short-circuit ignore: hey stardance")
+      Rails.logger.debug("[Rsvp::ReplyMailbox] Short-circuit ignore: hey stardance")
       return false
     end
 
@@ -59,9 +59,9 @@ class Rsvp::ReplyMailbox < ApplicationMailbox
       #{text}
     PROMPT
 
-    Rails.logger.info("[Rsvp::ReplyMailbox] Calling OpenAI...")
+    Rails.logger.debug("[Rsvp::ReplyMailbox] Calling OpenAI...")
     classification = OpenaiApiService.call(prompt).to_s.downcase.strip
-    Rails.logger.info("[Rsvp::ReplyMailbox] AI result: #{classification.inspect}")
+    Rails.logger.debug("[Rsvp::ReplyMailbox] AI result: #{classification.inspect}")
     classification == "forward"
   rescue StandardError => e
     Rails.logger.error("[Rsvp::ReplyMailbox] AI classification failed: #{e.message}")
