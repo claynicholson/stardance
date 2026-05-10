@@ -13,6 +13,11 @@ class AiService
 
     request.body = request_body(prompt).to_json
     response = http.request(request)
+
+    unless response.code == "200"
+      raise "AI API error: #{response.code} - #{response.body}"
+    end
+
     json = JSON.parse(response.body)
     extract_content(json)
   end

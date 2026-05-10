@@ -7,6 +7,9 @@ class Rsvp::ReplyMailbox < ApplicationMailbox
   SIGNUP_CONFIRMATION_SUBJECT = "confirm you're in for stardance"
 
   def process
+    forwarded = should_forward?
+    SupportMailer.forward(inbound_email).deliver_later if forwarded
+
     return if public_address? && !signup_confirmation_reply?
 
     sender = mail.from.first.to_s.downcase.strip
@@ -15,6 +18,8 @@ class Rsvp::ReplyMailbox < ApplicationMailbox
 
     rsvp.confirm_reply!
     persist_reply(rsvp)
+
+    return if forwarded
 
     if stop_requested?
       Rsvp::Game.current_for(rsvp)&.destroy
@@ -25,6 +30,43 @@ class Rsvp::ReplyMailbox < ApplicationMailbox
   end
 
   private
+
+  def should_forward?
+    Rails.logger.info("[Rsvp::ReplyMailbox] Checking if should forward. public_address?: #{public_address?}, stop_requested?: #{stop_requested?}")
+    return false unless public_address?
+    return false if stop_requested?
+
+    text = visible_reply.to_s.strip
+    downcased_clean = text.downcase.gsub(/[[:punct:]]/, "")
+    Rails.logger.info("[Rsvp::ReplyMailbox] Text for AI: #{text.inspect}")
+
+    if downcased_clean == "hey stardance"
+      Rails.logger.info("[Rsvp::ReplyMailbox] Short-circuit ignore: hey stardance")
+      return false
+    end
+
+    prompt = <<~PROMPT
+      You are an email classifier for Stardance.
+      Determine if the following email body is just a simple RSVP confirmation (e.g., "Hey Stardance", "I'm in!", possibly with a signature or sign-off) or if it contains an actual question, concern, or request that requires a support team member to respond.
+
+      Rules:
+      - If it is just "Hey Stardance" (even with a signature/sign-off), reply "ignore".
+      - If it contains ANY question, request for help, or concern, reply "forward".
+      - Be conservative: if in doubt, reply "forward".
+      - Reply ONLY with one word: "forward" or "ignore".
+
+      Email Body:
+      #{text}
+    PROMPT
+
+    Rails.logger.info("[Rsvp::ReplyMailbox] Calling OpenAI...")
+    classification = OpenaiApiService.call(prompt).to_s.downcase.strip
+    Rails.logger.info("[Rsvp::ReplyMailbox] AI result: #{classification.inspect}")
+    classification == "forward"
+  rescue StandardError => e
+    Rails.logger.error("[Rsvp::ReplyMailbox] AI classification failed: #{e.message}")
+    true # Forward by default if AI fails
+  end
 
   def public_address?
     recipients = Array(mail.to).map { |address| address.to_s.downcase.strip }

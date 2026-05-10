@@ -3,8 +3,28 @@ require "test_helper"
 class Rsvp::ReplyMailboxTest < ActionMailbox::TestCase
   include ActionMailer::TestHelper
 
+  setup do
+    @original_ai_call = OpenaiApiService.method(:call)
+    class << OpenaiApiService
+      def call(prompt)
+        @mock_response || "forward"
+      end
+      attr_accessor :mock_response
+    end
+  end
+
+  teardown do
+    class << OpenaiApiService
+      remove_method :call
+      remove_method :mock_response
+      remove_method :mock_response=
+    end
+    OpenaiApiService.define_singleton_method(:call, &@original_ai_call)
+  end
+
   self.fixture_table_names = []
   self.fixture_sets = {}
+
   test "reply from a known RSVP stamps reply_confirmed_at" do
     rsvp = Rsvp.create!(email: "fan@example.com")
     rsvp.update_column(:reply_confirmed_at, nil)
@@ -191,7 +211,7 @@ class Rsvp::ReplyMailboxTest < ActionMailbox::TestCase
         from: "occupied@example.com",
         subject: "Re: ttt",
         body: "1"
-    end
+      end
   end
 
   test "digit reply on a freshly-started game plays the move instead of resending start" do
@@ -236,5 +256,116 @@ class Rsvp::ReplyMailboxTest < ActionMailbox::TestCase
 
     assert_enqueued_email_with Rsvp::Mailer, :tic_tac_toe_over, args: [ game ]
     assert_predicate game.reload, :user_won?
+  end
+
+  test "general email to stardance@hackclub.com is forwarded to Jelly" do
+    OpenaiApiService.mock_response = "forward"
+    assert_enqueued_emails 1 do
+      receive_inbound_email_from_mail \
+        to: "stardance@hackclub.com",
+        from: "supporter@example.com",
+        subject: "Question about prizes",
+        body: "How do I get my prize?"
+    end
+  end
+
+  test "Hey Stardance with a signature is NOT forwarded to Jelly (AI-ignored)" do
+    OpenaiApiService.mock_response = "ignore"
+    assert_no_enqueued_emails do
+      receive_inbound_email_from_mail \
+        to: "stardance@hackclub.com",
+        from: "rsvper@example.com",
+        subject: "Re: welcome",
+        body: "Hey Stardance\n\n-- \nSent from my iPhone"
+    end
+  end
+
+  test "Hey Stardance with a name signature is NOT forwarded to Jelly (AI-ignored)" do
+    OpenaiApiService.mock_response = "ignore"
+    assert_no_enqueued_emails do
+      receive_inbound_email_from_mail \
+        to: "stardance@hackclub.com",
+        from: "rsvper@example.com",
+        subject: "Re: welcome",
+        body: "Hey Stardance\n\nBest,\nAmber"
+    end
+  end
+
+  test "Hey Stardance with a short support request IS forwarded to Jelly (AI-forwarded)" do
+    OpenaiApiService.mock_response = "forward"
+    assert_enqueued_emails 1 do
+      receive_inbound_email_from_mail \
+        to: "stardance@hackclub.com",
+        from: "troubled@example.com",
+        subject: "Re: welcome",
+        body: "Hey Stardance, help me please!"
+    end
+  end
+
+  test "Hey Stardance with a question IS forwarded to Jelly (AI-forwarded)" do
+    OpenaiApiService.mock_response = "forward"
+    assert_enqueued_emails 1 do
+      receive_inbound_email_from_mail \
+        to: "stardance@hackclub.com",
+        from: "curious@example.com",
+        subject: "Re: welcome",
+        body: "Hey Stardance! Oh also what's the maximum age you can be to participate?"
+    end
+  end
+
+  test "tic-tac-toe move to stardance@hackclub.com is NOT forwarded to Jelly" do
+    OpenaiApiService.mock_response = "ignore"
+    assert_no_enqueued_emails do
+      receive_inbound_email_from_mail \
+        to: "stardance@hackclub.com",
+        from: "player@example.com",
+        subject: "Re: ttt",
+        body: "1"
+    end
+  end
+
+  test "STOP email to stardance@hackclub.com is NOT forwarded to Jelly" do
+    assert_no_enqueued_emails do
+      receive_inbound_email_from_mail \
+        to: "stardance@hackclub.com",
+        from: "quitter@example.com",
+        subject: "Re: welcome",
+        body: "STOP"
+    end
+  end
+
+  test "reply to signup confirmation with a question IS forwarded to Jelly" do
+    OpenaiApiService.mock_response = "forward"
+    assert_enqueued_emails 1 do
+      receive_inbound_email_from_mail \
+        to: "stardance@hackclub.com",
+        from: "curious@example.com",
+        subject: "Re: #{Rsvp::ReplyMailbox::SIGNUP_CONFIRMATION_SUBJECT}",
+        body: "Hey Stardance, can I bring a friend?"
+    end
+  end
+
+  test "email to rsvp@stardance.hackclub.com is NOT forwarded to Jelly" do
+    assert_no_enqueued_emails do
+      receive_inbound_email_from_mail \
+        to: "rsvp@stardance.hackclub.com",
+        from: "player@example.com",
+        subject: "Re: ttt",
+        body: "I pick 5"
+    end
+  end
+
+  test "reply from known RSVP to signup confirmation with a question is forwarded AND NOT locally processed for games" do
+    rsvp = Rsvp.create!(email: "known@example.com")
+    OpenaiApiService.mock_response = "forward"
+    assert_enqueued_emails 1 do # ONLY forward, NO tic-tac-toe start
+      receive_inbound_email_from_mail \
+        to: "stardance@hackclub.com",
+        from: "known@example.com",
+        subject: "Re: #{Rsvp::ReplyMailbox::SIGNUP_CONFIRMATION_SUBJECT}",
+        body: "Hey Stardance, I have a question!"
+    end
+    assert_not_nil rsvp.reload.reply_confirmed_at
+    assert_nil Rsvp::Game.current_for(rsvp)
   end
 end
