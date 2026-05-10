@@ -7,8 +7,6 @@ module OgImage
       "no_devlogs" => -> { new(sample_project(devlogs_count: 0)) }
     }.freeze
 
-    STARDANCE_LOGO_PATH = Rails.root.join("app", "assets", "images", "landing", "header", "stardance-logo.png").to_s
-
     class << self
       def sample_project(title: "floob", devlogs_count: 12, banner: true, owner: "hackclub_dev", hours: 42)
         OpenStruct.new(
@@ -30,7 +28,7 @@ module OgImage
       create_stardance_canvas
 
       draw_thumbnail
-      draw_stardance_logo
+      place_stardance_logo(x: 80, y: 60, width: 240, height: 68)
       draw_title
       draw_subtitle
     end
@@ -119,20 +117,6 @@ module OgImage
 
     def logo_path
       Rails.root.join("app", "assets", "images", "flavortown_logo.png").to_s
-    end
-
-    def draw_stardance_logo
-      return unless File.exist?(STARDANCE_LOGO_PATH)
-
-      place_image(
-        STARDANCE_LOGO_PATH,
-        x: 80,
-        y: 60,
-        width: 240,
-        height: 68,
-        gravity: "NorthWest",
-        cover: false
-      )
     end
 
     def build_stats

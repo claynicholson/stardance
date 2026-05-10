@@ -38,6 +38,9 @@ module OgImage
     WIDTH = 1200
     HEIGHT = 630
 
+    STARDANCE_LOGO_PATH = Rails.root.join("app", "assets", "images", "landing", "header", "stardance-logo.png").to_s
+    STAR_CHARACTER_PATH = Rails.root.join("app", "assets", "images", "landing", "hero", "star-character.png").to_s
+
     attr_reader :image
 
     def initialize
@@ -254,6 +257,31 @@ module OgImage
 
     def title_font_name
       "Didot Italic"
+    end
+
+    def place_stardance_logo(x: 70, y: 60, width: 280, height: 80, gravity: "NorthWest")
+      return unless File.exist?(STARDANCE_LOGO_PATH)
+
+      place_image(STARDANCE_LOGO_PATH, x: x, y: y, width: width, height: height, gravity: gravity, cover: false)
+    end
+
+    def place_star_character(x: 60, y: 60, width: 220, height: 220, gravity: "SouthEast")
+      return unless File.exist?(STAR_CHARACTER_PATH)
+
+      place_image(STAR_CHARACTER_PATH, x: x, y: y, width: width, height: height, gravity: gravity, cover: false)
+    end
+
+    def draw_diagonal_scrim(opacity: 0.55)
+      r, g, b = hex_to_rgb("#08061e")
+      h_ramp = Vips::Image.identity(bands: 1).resize(WIDTH / 256.0, vscale: 1.0)
+      h_ramp = h_ramp.linear(-1.0, 255.0).resize(1, vscale: HEIGHT.to_f)
+
+      v_ramp = Vips::Image.identity(bands: 1).resize(1, vscale: HEIGHT / 256.0)
+      v_ramp = v_ramp.resize(WIDTH.to_f, vscale: 1.0)
+
+      diag = ((h_ramp + v_ramp) / 2.0 * opacity).cast(:uchar)
+      scrim = solid_rgba(WIDTH, HEIGHT, r, g, b).extract_band(0, n: 3).bandjoin(diag).copy(interpretation: :srgb)
+      @image = image.composite(scrim, :over, x: [ 0 ], y: [ 0 ])
     end
 
     private

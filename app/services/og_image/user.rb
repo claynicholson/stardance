@@ -43,9 +43,6 @@ module OgImage
       "prolific" => -> { new(sample_user(display_name: "Super Builder", projects_count: 50, stardust_earned: 2500, hours_logged: 150)) }
     }.freeze
 
-    STARDANCE_LOGO_PATH = Rails.root.join("app", "assets", "images", "landing", "header", "stardance-logo.png").to_s
-    STAR_CHARACTER_PATH = Rails.root.join("app", "assets", "images", "landing", "hero", "star-character.png").to_s
-
     class << self
       def sample_user(display_name: "hackclub_dev", projects_count: 5, stardust_earned: 350, hours_logged: 42)
         MockUser.new(
@@ -66,10 +63,10 @@ module OgImage
       create_stardance_canvas
 
       draw_avatar
-      draw_stardance_logo
+      place_stardance_logo(x: 60, y: 45, width: 200, height: 56)
       draw_title
       draw_subtitle
-      draw_star_accent
+      place_star_character(x: 30, y: 20, width: 120, height: 120, gravity: "SouthWest")
     end
 
     private
@@ -118,30 +115,6 @@ module OgImage
         gravity: "NorthEast",
         rounded: true,
         radius: 24
-      )
-    end
-
-    def draw_stardance_logo
-      return unless File.exist?(STARDANCE_LOGO_PATH)
-
-      place_image(
-        STARDANCE_LOGO_PATH,
-        x: 60, y: 45,
-        width: 200, height: 56,
-        gravity: "NorthWest",
-        cover: false
-      )
-    end
-
-    def draw_star_accent
-      return unless File.exist?(STAR_CHARACTER_PATH)
-
-      place_image(
-        STAR_CHARACTER_PATH,
-        x: 30, y: 20,
-        width: 120, height: 120,
-        gravity: "SouthWest",
-        cover: false
       )
     end
 

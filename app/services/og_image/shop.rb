@@ -4,8 +4,6 @@ module OgImage
       "default" => -> { new }
     }.freeze
 
-    LOGO_PATH = Rails.root.join("app", "assets", "images", "landing", "header", "stardance-logo.png").to_s
-
     PRIZE_ITEMS = [
       { file: "switch.png", x: 720, y: 50, w: 380, h: 220 },
       { file: "bambu-a1m.png", x: 920, y: 260, w: 240, h: 280 },
@@ -18,36 +16,19 @@ module OgImage
       create_stardance_canvas
       place_prizes
       draw_glow_accent
-      place_logo
+      place_stardance_logo
       draw_tagline
       draw_subtitle
     end
 
     private
 
-    def place_logo
-      return unless File.exist?(LOGO_PATH)
-
-      place_image(
-        LOGO_PATH,
-        x: 70, y: 60,
-        width: 280, height: 80,
-        gravity: "NorthWest",
-        cover: false
-      )
-    end
-
     def place_prizes
       PRIZE_ITEMS.each do |item|
         path = Rails.root.join("app", "assets", "images", "landing", "prizes", item[:file]).to_s
         next unless File.exist?(path)
 
-        place_image(
-          path,
-          x: item[:x], y: item[:y],
-          width: item[:w], height: item[:h],
-          cover: false
-        )
+        place_image(path, x: item[:x], y: item[:y], width: item[:w], height: item[:h], cover: false)
       end
     end
 
@@ -65,25 +46,15 @@ module OgImage
     def draw_tagline
       draw_glowing_text(
         "Earn prizes.",
-        x: 70,
-        y: 200,
-        size: 86,
-        color: "#ffe564",
-        glow_color: "#ffe564",
-        glow_radius: 10,
-        glow_opacity: 0.35,
+        x: 70, y: 200, size: 86,
+        color: "#ffe564", glow_color: "#ffe564",
+        glow_radius: 10, glow_opacity: 0.35,
         font: title_font_name
       )
     end
 
     def draw_subtitle
-      draw_text(
-        "Build projects, spend stardust, get real stuff.",
-        x: 70,
-        y: 310,
-        size: 30,
-        color: "#c9c9c9"
-      )
+      draw_text("Build projects, spend stardust, get real stuff.", x: 70, y: 310, size: 30, color: "#c9c9c9")
     end
   end
 end
