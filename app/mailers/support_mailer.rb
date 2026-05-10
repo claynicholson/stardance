@@ -5,7 +5,7 @@ class SupportMailer < ApplicationMailer
     @subject = mail_message.subject
 
     mail(
-      to: ENV.fetch("JELLY_SUPPORT_EMAIL", "jelly@hackclub.com"),
+      to: Rails.application.credentials.dig(:jelly, :forwarding_address) || ENV.fetch("JELLY_SUPPORT_EMAIL", "jelly@hackclub.com"),
       from: "stardance@hackclub.com",
       reply_to: @sender,
       subject: "[Forwarded Support] #{@subject}"
