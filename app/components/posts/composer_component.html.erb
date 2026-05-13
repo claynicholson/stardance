@@ -59,7 +59,7 @@
     <div class="feed-composer__empty">
       <%= image_tag current_user.avatar, alt: "", class: "feed-composer__avatar" %>
       <p class="feed-composer__empty-copy">Create a project before posting your first devlog.</p>
-      <%= render ButtonComponent.new(text: "New project", color: :bg_yellow, href: new_project_path, class: "feed-composer__submit") %>
+      <%= render SpecialActionButtonComponent.new(text: "New project", href: new_project_path, class: "feed-composer__submit") %>
     </div>
   <% end %>
 </section>
