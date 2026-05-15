@@ -8,6 +8,7 @@ class ApplicationController < ActionController::Base
   include Achievementable
 
   before_action :store_referral_code
+  before_action :remember_page
   before_action :enforce_ban
   before_action :refresh_identity_on_portal_return
   before_action :initialize_cache_counters
@@ -71,6 +72,23 @@ class ApplicationController < ActionController::Base
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
 
   private
+
+  # https://stackoverflow.com/questions/70960161/ruby-on-rails-back-button-that-will-take-you-back-to-the-previous-page
+  # improvised a bit. a linked list sorta..
+  def remember_page
+    return unless request.get? && request.format.html?
+    return if request.xhr?
+
+    current_url = url_for(params.to_unsafe_h)
+    pages = session[:previous_pages] ||= []
+
+    if (idx = pages.index(current_url))
+      session[:previous_pages] = pages[0..idx]
+    elsif pages.last != current_url
+      pages << current_url
+      session[:previous_pages] = pages.last(20)
+    end
+  end
 
   def store_referral_code
     return unless params[:ref].present? && params[:ref].length <= 64

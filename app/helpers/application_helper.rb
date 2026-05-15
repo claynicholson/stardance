@@ -65,6 +65,13 @@ module ApplicationHelper
     "rotate(#{rand(-3..3)}deg) scale(#{(rand(97..103).to_f / 100).round(2)}) translateY(#{rand(-8..8)}px)"
   end
 
+  def back_path(fallback = home_path)
+    pages = session[:previous_pages]
+    return fallback if pages.blank? || pages.size < 2
+
+    pages[-2]
+  end
+
   def safe_external_url(url)
     return nil if url.blank?
 

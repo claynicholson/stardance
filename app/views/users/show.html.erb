@@ -27,15 +27,10 @@
     <div class="profile__banner">
       <%= image_tag banner_url, alt: "", class: "profile__banner-image",
                     data: { "profile-edit-target": "banner" } %>
-      <%= link_to home_path,
+      <%= link_to back_path,
                   class: "profile__back",
                   "aria-label": "Back",
-                  data: {
-                    controller: "back-button",
-                    "back-button-fallback-value": home_path,
-                    action: "click->back-button#go",
-                    turbo_frame: "_top"
-                  } do %>
+                  data: { turbo_frame: "_top" } do %>
         <svg class="profile__back-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M14 6l-6 6 6 6" />
         </svg>
