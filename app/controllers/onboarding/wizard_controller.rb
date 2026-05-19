@@ -1,10 +1,13 @@
 class Onboarding::WizardController < ApplicationController
   layout "onboarding"
 
-  before_action :require_signup_email!,    only: %i[welcome birthday submit_birthday]
-  before_action :require_teen_attestation!, only: %i[experience submit_experience experience_result
-                                                     interests submit_interests interests_result
-                                                     name submit_name]
+  before_action :require_onboarding_guest!,  only: %i[welcome birthday submit_birthday
+                                                      experience submit_experience experience_result
+                                                      interests submit_interests interests_result
+                                                      name submit_name]
+  before_action :require_teen_attestation!,  only: %i[experience submit_experience experience_result
+                                                      interests submit_interests interests_result
+                                                      name submit_name]
 
   def start
     if current_user.present?
@@ -16,20 +19,20 @@ class Onboarding::WizardController < ApplicationController
       redirect_to root_path, alert: "Please enter a valid email address." and return
     end
 
-    normalized = normalize_email(email)
+    normalized = email.downcase
     existing = User.find_by(email: normalized)
 
     if existing&.hca_linked?
       redirect_to helpers.hack_club_auth_path(login_hint: normalized) and return
     end
 
-    if existing&.guest?
+    if existing
       session[:user_id] = existing.id
       redirect_to home_path and return
     end
 
-    signup_session.start!
-    signup_session.email = normalized
+    user = create_guest!(normalized)
+    session[:user_id] = user.id
     redirect_to onboarding_welcome_path
   end
 
@@ -40,10 +43,11 @@ class Onboarding::WizardController < ApplicationController
   def submit_birthday
     case params[:attestation]
     when "teen_13_18"
-      signup_session.age_attestation = "teen_13_18"
+      current_user.update!(age_attestation: "teen_13_18")
       redirect_to onboarding_experience_path
     when "ineligible"
-      signup_session.clear!
+      current_user.destroy
+      reset_session
       redirect_to onboarding_age_gate_path
     else
       redirect_to onboarding_birthday_path, alert: "Please pick one."
@@ -60,16 +64,16 @@ class Onboarding::WizardController < ApplicationController
       redirect_to onboarding_experience_path, alert: "Please pick one." and return
     end
 
-    signup_session.experience_level = level
+    current_user.update!(experience_level: level)
     redirect_to onboarding_experience_result_path
   end
 
   def experience_result
-    @level = signup_session.experience_level
+    @level = current_user.experience_level
   end
 
   def interests
-    @selected = signup_session.interests || []
+    @selected = current_user.interests || []
   end
 
   def submit_interests
@@ -78,16 +82,16 @@ class Onboarding::WizardController < ApplicationController
       redirect_to onboarding_interests_path, alert: "Pick at least one." and return
     end
 
-    signup_session.interests = selected
+    current_user.update!(interests: selected)
     redirect_to onboarding_interests_result_path
   end
 
   def interests_result
-    @interests = signup_session.interests || []
+    @interests = current_user.interests || []
   end
 
   def name
-    @display_name_default = signup_session.display_name.presence || default_name_from_email
+    @display_name_default = default_name_from_email
   end
 
   MAX_DISPLAY_NAME_LENGTH = 60
@@ -101,8 +105,8 @@ class Onboarding::WizardController < ApplicationController
       redirect_to onboarding_name_path, alert: "That's a really long name — please keep it under #{MAX_DISPLAY_NAME_LENGTH} characters." and return
     end
 
-    signup_session.display_name = display_name
-    finalize_signup
+    current_user.update!(display_name: display_name, onboarded_at: Time.current)
+    redirect_to onboarding_complete_path
   end
 
   def complete
@@ -113,50 +117,27 @@ class Onboarding::WizardController < ApplicationController
 
   private
 
-  def signup_session
-    @signup_session ||= SignupSession.new(session)
+  def create_guest!(email)
+    User.create!(email: email, display_name: User.random_funny_display_name)
+  rescue ActiveRecord::RecordNotUnique
+    User.find_by(email: email) or raise
   end
 
-  def require_signup_email!
-    return if signup_session.email.present?
+  def require_onboarding_guest!
+    return if current_user&.guest?
     redirect_to root_path, alert: "Please start signup from the homepage."
   end
 
-  def finalize_signup
-    user = User.transaction do
-      created = Onboarding::GuestProvisioner.new(
-        email:            signup_session.email,
-        display_name:     signup_session.display_name,
-        age_attestation:  signup_session.age_attestation,
-        experience_level: signup_session.experience_level,
-        interests:        signup_session.interests || []
-      ).call!
-      created
-    end
-
-    session[:user_id] = user.id
-    signup_session.clear!
-
-    redirect_to onboarding_complete_path
-  rescue Onboarding::GuestProvisioner::ExistingHcaUser
-    signup_session.clear!
-    redirect_to helpers.hack_club_auth_path
-  end
-
   def require_teen_attestation!
-    return if signup_session.age_attestation == "teen_13_18"
+    return if current_user&.age_attestation_teen_13_18?
     redirect_to onboarding_birthday_path
   end
 
   def default_name_from_email
-    local = signup_session.email.to_s.split("@").first.to_s
+    local = current_user.email.to_s.split("@").first.to_s
     return nil if local.blank?
 
     normalized = local.tr("._-", " ")
     normalized.split.map(&:capitalize).join(" ").presence
-  end
-
-  def normalize_email(email)
-    email.to_s.strip.downcase
   end
 end

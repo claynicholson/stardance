@@ -14,13 +14,14 @@ class SessionsControllerGuestUpgradeTest < ActionDispatch::IntegrationTest
   end
 
   test "guest with no HCA identity gets identity attached on first sign-in" do
-    guest = Onboarding::GuestProvisioner.new(
+    guest = User.create!(
       email:            "newteen@example.com",
       display_name:     "Wizard Name",
       age_attestation:  "teen_13_18",
       experience_level: "little",
-      interests:        %w[web_dev]
-    ).call!
+      interests:        %w[web_dev],
+      onboarded_at:     Time.current
+    )
 
     open_session.tap do |sess|
       sess.send(:process, :get, dev_login_path(guest.id))
@@ -40,13 +41,14 @@ class SessionsControllerGuestUpgradeTest < ActionDispatch::IntegrationTest
   end
 
   test "HCA birthday under 13 flags guest as ineligible and signs out" do
-    guest = Onboarding::GuestProvisioner.new(
+    guest = User.create!(
       email:            "tooyoung@example.com",
       display_name:     "Young Liar",
       age_attestation:  "teen_13_18",
       experience_level: "none",
-      interests:        []
-    ).call!
+      interests:        [],
+      onboarded_at:     Time.current
+    )
 
     with_stubbed_hca_identity(birthday: "2018-01-01") do
       with_omniauth_mock(@access_token) do
@@ -62,13 +64,14 @@ class SessionsControllerGuestUpgradeTest < ActionDispatch::IntegrationTest
   end
 
   test "HCA birthday over 18 also flags as ineligible" do
-    guest = Onboarding::GuestProvisioner.new(
+    guest = User.create!(
       email:            "tooold@example.com",
       display_name:     "Old Liar",
       age_attestation:  "teen_13_18",
       experience_level: "experienced",
-      interests:        %w[hardware]
-    ).call!
+      interests:        %w[hardware],
+      onboarded_at:     Time.current
+    )
 
     with_stubbed_hca_identity(birthday: "2000-01-01") do
       with_omniauth_mock(@access_token) do
@@ -82,13 +85,14 @@ class SessionsControllerGuestUpgradeTest < ActionDispatch::IntegrationTest
   end
 
   test "OAuth resolving to a different existing user resets the guest session and signs in as that user" do
-    guest = Onboarding::GuestProvisioner.new(
+    guest = User.create!(
       email:            "collision-guest@example.com",
       display_name:     "Collision Guest",
       age_attestation:  "teen_13_18",
       experience_level: "some",
-      interests:        []
-    ).call!
+      interests:        [],
+      onboarded_at:     Time.current
+    )
 
     # A different HCA-linked user already exists with the slack_id that HCA will return.
     existing = User.create!(
@@ -123,13 +127,14 @@ class SessionsControllerGuestUpgradeTest < ActionDispatch::IntegrationTest
   end
 
   test "HCA birthday in 13-18 range is accepted" do
-    guest = Onboarding::GuestProvisioner.new(
+    guest = User.create!(
       email:            "honest@example.com",
       display_name:     "Honest Teen",
       age_attestation:  "teen_13_18",
       experience_level: "some",
       interests:        %w[app_dev],
-    ).call!
+      onboarded_at:     Time.current
+    )
 
     with_stubbed_hca_identity(birthday: "2009-08-20") do
       with_omniauth_mock(@access_token) do

@@ -17,14 +17,6 @@ class SessionsController < ApplicationController
     reset_session if result.guest_collision
     session[:user_id] = result.user.id
 
-    if session.delete(:start_flow)
-      apply_start_flow_data!(result.user)
-      result.user.complete_tutorial_step!(:first_login)
-      session[:show_welcome_overlay] = true
-      redirect_to home_path
-      return
-    end
-
     return_to = safe_return_to(session.delete(:return_to))
     redirect_to(return_to || (result.user.setup_complete? ? projects_user_path(result.user) : home_path), notice: "Signed in with Hack Club")
   end
@@ -60,26 +52,6 @@ class SessionsController < ApplicationController
   end
 
   private
-
-  def apply_start_flow_data!(user)
-    signup = SignupSession.new(session)
-    session_data = {
-      start_display_name:          signup.display_name,
-      start_project_attrs:         signup.project_attrs,
-      start_devlog_body:           signup.devlog_body,
-      start_devlog_attachment_ids: signup.devlog_attachment_ids
-    }
-
-    result = StartFlowService.new(user: user, session_data: session_data).call
-
-    unless result.success?
-      flash[:alert] = result.errors.join(". ")
-    end
-
-    result
-  ensure
-    signup&.clear!
-  end
 
   def safe_return_to(path)
     return nil if path.blank?

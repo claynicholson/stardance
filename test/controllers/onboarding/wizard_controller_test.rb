@@ -1,37 +1,59 @@
 require "test_helper"
 
 class Onboarding::WizardControllerTest < ActionDispatch::IntegrationTest
-  test "POST /onboarding/start with valid email seeds session and redirects to welcome" do
-    post onboarding_start_path, params: { email: "fresh@example.com" }
+  test "POST /onboarding/start with valid email creates a guest user and redirects to welcome" do
+    assert_difference "User.count", 1 do
+      post onboarding_start_path, params: { email: "fresh@example.com" }
+    end
     assert_redirected_to onboarding_welcome_path
-    assert_equal "fresh@example.com", session[:start_email]
-    assert session[:start_flow]
+
+    user = User.find_by(email: "fresh@example.com")
+    assert_not_nil user
+    assert user.guest?
+    assert_nil user.onboarded_at
+    assert_equal user.id, session[:user_id]
   end
 
-  test "POST /onboarding/start with invalid email re-renders root with alert" do
-    post onboarding_start_path, params: { email: "not-an-email" }
+  test "POST /onboarding/start with invalid email re-renders root with alert and creates no user" do
+    assert_no_difference "User.count" do
+      post onboarding_start_path, params: { email: "not-an-email" }
+    end
     assert_redirected_to root_path
-    assert_nil session[:start_email]
+    assert_nil session[:user_id]
   end
 
-  test "GET /onboarding/welcome without start_email redirects to root" do
+  test "POST /onboarding/start signs in an existing guest with that email and skips the wizard" do
+    existing = User.create!(email: "returning@example.com", display_name: "Returning Guest")
+
+    assert_no_difference "User.count" do
+      post onboarding_start_path, params: { email: "returning@example.com" }
+    end
+    assert_redirected_to home_path
+    assert_equal existing.id, session[:user_id]
+  end
+
+  test "GET /onboarding/welcome without a signed-in guest redirects to root" do
     get onboarding_welcome_path
     assert_redirected_to root_path
   end
 
-  test "POST /onboarding/birthday with teen_13_18 advances and writes session" do
+  test "POST /onboarding/birthday with teen_13_18 sets attestation on the user" do
     post onboarding_start_path, params: { email: "teen@example.com" }
     post onboarding_birthday_path, params: { attestation: "teen_13_18" }
+
     assert_redirected_to onboarding_experience_path
-    assert_equal "teen_13_18", session[:start_age_attestation]
+    assert_equal "teen_13_18", User.find_by(email: "teen@example.com").age_attestation
   end
 
-  test "POST /onboarding/birthday with ineligible clears session and routes to age-gate" do
+  test "POST /onboarding/birthday with ineligible destroys the guest and routes to age-gate" do
     post onboarding_start_path, params: { email: "tooold@example.com" }
-    post onboarding_birthday_path, params: { attestation: "ineligible" }
+
+    assert_difference "User.count", -1 do
+      post onboarding_birthday_path, params: { attestation: "ineligible" }
+    end
     assert_redirected_to onboarding_age_gate_path
-    assert_nil session[:start_email]
-    assert_nil session[:start_age_attestation]
+    assert_nil session[:user_id]
+    assert_nil User.find_by(email: "tooold@example.com")
   end
 
   test "experience step gated when no teen attestation" do
@@ -40,13 +62,16 @@ class Onboarding::WizardControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to onboarding_birthday_path
   end
 
-  test "full happy path creates a guest user, signs them in, and redirects with welcome=1" do
-    post onboarding_start_path, params: { email: "happy@example.com" }
-    post onboarding_birthday_path, params: { attestation: "teen_13_18" }
-    post onboarding_experience_path, params: { level: "some" }
-    post onboarding_interests_path, params: { interests: %w[web_dev hardware] }
-
+  test "full happy path populates the existing guest and redirects to complete" do
     assert_difference "User.count", 1 do
+      post onboarding_start_path, params: { email: "happy@example.com" }
+    end
+
+    post onboarding_birthday_path,   params: { attestation: "teen_13_18" }
+    post onboarding_experience_path, params: { level: "some" }
+    post onboarding_interests_path,  params: { interests: %w[web_dev hardware] }
+
+    assert_no_difference "User.count" do
       post onboarding_name_path, params: { display_name: "Happy Hacker" }
     end
 
@@ -59,6 +84,5 @@ class Onboarding::WizardControllerTest < ActionDispatch::IntegrationTest
     assert user.onboarded?
     assert user.guest?
     assert_equal user.id, session[:user_id]
-    assert_nil session[:start_email]
   end
 end
