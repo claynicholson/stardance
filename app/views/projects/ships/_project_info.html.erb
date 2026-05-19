@@ -19,7 +19,11 @@
       local: true,
       html: { multipart: true },
       class: "ship__form",
-      data: { controller: "project-form" }
+      data: {
+        controller: "project-form",
+        action: "submit->project-form#onSubmit",
+        "project-form-readme-locked-class-value": "ship__field--locked"
+      }
     ) do |form| %>
 
   <div class="ship__group">
@@ -45,7 +49,7 @@
             rows: 3,
             placeholder: "Share what the project does, who's working on it, and what's next.",
             data: {
-              action: "input->project-form#onDescriptionInput input->project-form#syncUpdateCheckbox blur->project-form#validateDescription",
+              action: "input->project-form#validateDescription blur->project-form#validateDescription",
               "project-form-target": "description"
             } %>
     </div>
@@ -112,7 +116,9 @@
       </div>
     </div>
 
-    <div class="ship__field" data-project-form-target="readmeContainer" hidden>
+    <div class="ship__field"
+         data-project-form-target="readmeContainer"
+         <%= "hidden" if @project.readme_url.blank? %>>
       <div class="ship__field-row">
         <span class="ship__label-with-info">
           <label class="ship__label" for="project_readme_url">Readme URL</label>
@@ -144,8 +150,7 @@
     <label class="ship__checkbox">
       <input type="checkbox"
              class="ship__checkbox-input"
-             data-project-form-target="updateDeclaration"
-             data-action="change->project-form#toggleUpdatePrefix">
+             aria-label="This project was started before June 1 2026, or was previously shipped to a Hack Club event.">
       <span class="ship__checkbox-text">
         This project was started <strong>before June 1 2026</strong>, or was <strong>previously shipped</strong> to a Hack Club event.
       </span>

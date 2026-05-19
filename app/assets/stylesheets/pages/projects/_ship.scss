@@ -189,6 +189,18 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+
+    &[hidden] {
+      display: none;
+    }
+
+    &--locked {
+      .ship__input {
+        opacity: 0.65;
+        cursor: not-allowed;
+        filter: saturate(0.7);
+      }
+    }
   }
 
   &__label-with-info {

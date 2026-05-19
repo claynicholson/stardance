@@ -10,25 +10,20 @@ export default class extends Controller {
     "readmeUrl",
     "readmeContainer",
     "submit",
-    "updateDeclaration",
-    "updateDescriptionContainer",
-    "updateDescriptionField",
   ];
 
   static values = {
-    updatePrefix: { type: String, default: "Updated Project:" },
+    readmeLockedClass: {
+      type: String,
+      default: "project-form--readme-locked",
+    },
   };
 
   connect() {
-    this.userEditedReadme = false;
     this.submitting = false;
+    this.userEditedReadme = false;
     this.debouncedDetect = this.debounce(() => this.detectReadme(), 400);
 
-    // Store the base description (without prefixes)
-    this.baseDescription = "";
-
-    // Reset submitting flag after direct uploads complete so the form can
-    // be re-submitted with the signed blob ID by Active Storage.
     this.element.addEventListener("direct-upload:end", () => {
       this.submitting = false;
     });
@@ -37,25 +32,7 @@ export default class extends Controller {
       if (this.hasSubmitTarget) this.submitTarget.disabled = false;
     });
 
-    if (this.hasReadmeUrlTarget) {
-      this.readmeUrlTarget.addEventListener("input", () => {
-        this.userEditedReadme = true;
-        this.readmeUrlTarget.removeAttribute("data-autofilled");
-      });
-    }
-
-    this.updateSubmitState(); // submit button
-
-    this.restorReadmeWhenThereIsAError();
-
-    // Initialize base description from current value (strip prefixes if present)
-    this.initializeBaseDescription();
-
-    // Sync checkbox state on load if description already has prefix
-    this.syncUpdateCheckbox();
-
-    // made it sync the update description on load so people don't have to retype everything
-    this.syncUpdateDescriptionVisibility({ clearWhenHidden: false });
+    this.restoreReadmeState();
 
     if (
       this.hasRepoUrlTarget &&
@@ -66,133 +43,40 @@ export default class extends Controller {
     }
   }
 
-  initializeBaseDescription() {
-    if (!this.hasDescriptionTarget) return;
-
-    let description = this.descriptionTarget.value.trimStart();
-    const updatePrefix = this.updatePrefixValue;
-
-    // Strip any existing prefix to get the base description
-    if (description.startsWith(updatePrefix)) {
-      const afterPrefix = description
-        .substring(updatePrefix.length)
-        .trimStart();
-      // Find where the update description ends (look for double space + newline)
-      const separatorIndex = afterPrefix.indexOf("  \n");
-      if (separatorIndex !== -1) {
-        this.baseDescription = afterPrefix
-          .substring(separatorIndex + 3)
-          .trimStart();
-      } else {
-        this.baseDescription = "";
-      }
-    } else {
-      this.baseDescription = description;
-    }
-  }
-
-  // Validation handlers
   validateTitle(event) {
     if (!this.hasTitleTarget) return;
+
     const el = this.titleTarget;
     const value = (el.value || "").trim();
     let message = "";
+
     if (!value) {
       message = "Title is required";
     } else if (value.length > 120) {
       message = "Title must be 120 characters or fewer";
     }
-    el.setCustomValidity(message);
-    if (event?.type === "blur") {
-      el.reportValidity();
-      if (message) this.triggerShake(el);
-    }
-    this.updateSubmitState();
-  }
 
-  onDescriptionInput(event) {
-    this.updateBaseDescription();
-    this.validateDescription(event);
+    this.setValidity(el, message, event);
   }
 
   validateDescription(event) {
     if (!this.hasDescriptionTarget) return;
+
     const el = this.descriptionTarget;
     const value = el.value || "";
-    let message = "";
-    if (value.length > 1000) {
-      message = "Description must be 1000 characters or fewer";
-    }
-    el.setCustomValidity(message);
-    if (event?.type === "blur") {
-      el.reportValidity();
-      if (message) this.triggerShake(el);
-    }
-    this.updateSubmitState();
-  }
+    const message =
+      value.length > 1000 ? "Description must be 1000 characters or fewer" : "";
 
-  // Track changes to the base description (when user types in the description field)
-  updateBaseDescription() {
-    if (!this.hasDescriptionTarget) return;
-
-    const currentValue = this.descriptionTarget.value.trimStart();
-    const updatePrefix = this.updatePrefixValue;
-
-    // Extract the base description from the current value
-    if (currentValue.startsWith(updatePrefix)) {
-      const afterPrefix = currentValue
-        .substring(updatePrefix.length)
-        .trimStart();
-      const separatorIndex = afterPrefix.indexOf("  \n");
-      if (separatorIndex !== -1) {
-        this.baseDescription = afterPrefix
-          .substring(separatorIndex + 3)
-          .trimStart();
-      } else {
-        // User might be editing, so be conservative
-        this.baseDescription = afterPrefix;
-      }
-    } else {
-      this.baseDescription = currentValue;
-    }
-  }
-
-  validateUpdateDescription(event) {
-    if (!this.hasUpdateDescriptionFieldTarget) return;
-    const el = this.updateDescriptionFieldTarget;
-    const value = (el.value || "").trim();
-    let message = "";
-
-    // Only require if the update checkbox is checked
-    if (
-      this.hasUpdateDeclarationTarget &&
-      this.updateDeclarationTarget.checked
-    ) {
-      if (!value) {
-        message = "Update description is required when marking as an update";
-      } else if (value.length > 1000) {
-        message = "Update description must be 1000 characters or fewer";
-      }
-    }
-
-    el.setCustomValidity(message);
-    if (event?.type === "blur") {
-      el.reportValidity();
-      if (message) this.triggerShake(el);
-    }
-    this.updateSubmitState();
-  }
-
-  onUpdateDescriptionInput(event) {
-    this.validateUpdateDescription(event);
-    this.rebuildPrefixes();
+    this.setValidity(el, message, event);
   }
 
   validateUrl(event) {
     const el = event?.target || null;
     if (!el) return;
+
     const value = (el.value || "").trim();
     let message = "";
+
     if (value.length > 0) {
       try {
         const url = new URL(value);
@@ -205,15 +89,10 @@ export default class extends Controller {
         message = "Enter a valid URL";
       }
     }
-    el.setCustomValidity(message);
-    if (event?.type === "blur") {
-      el.reportValidity();
-      if (message) this.triggerShake(el);
-    }
-    this.updateSubmitState();
+
+    this.setValidity(el, message, event);
   }
 
-  // input change -> validate + detect (try)
   onRepoInput(event) {
     this.validateUrl(event);
     this.debouncedDetect();
@@ -225,26 +104,23 @@ export default class extends Controller {
   }
 
   onReadmeInput(event) {
+    if (!this.hasReadmeUrlTarget) return;
+
     this.userEditedReadme = true;
     this.readmeUrlTarget.removeAttribute("data-autofilled");
+    this.setReadmeLocked(false);
     this.validateUrl(event);
-  }
-
-  updateSubmitState() {
-    if (!this.hasSubmitTarget) return;
-    this.submitTarget.disabled = false;
   }
 
   onSubmit(event) {
     const form = this.element.closest("form") || this.element;
+
     if (!form.checkValidity()) {
       form.reportValidity();
       event.preventDefault();
-      // shake all invalid inputs
-      const invalid = form.querySelectorAll(
-        "input:invalid, textarea:invalid, select:invalid",
-      );
-      invalid.forEach((field) => this.triggerShake(field));
+      form
+        .querySelectorAll("input:invalid, textarea:invalid, select:invalid")
+        .forEach((field) => this.triggerShake(field));
       return;
     }
 
@@ -252,51 +128,44 @@ export default class extends Controller {
       event.preventDefault();
       return;
     }
-    this.submitting = true;
 
-    if (this.hasSubmitTarget) {
-      this.submitTarget.disabled = true;
-    }
+    this.submitting = true;
+    if (this.hasSubmitTarget) this.submitTarget.disabled = true;
   }
 
-  // README detection
   async detectReadme() {
     if (!this.hasRepoUrlTarget || !this.hasReadmeUrlTarget) return;
-
-    // Do not override if user manually edited
     if (this.userEditedReadme && !this.readmeUrlTarget.dataset.autofilled) {
       return;
     }
 
     const repoValue = (this.repoUrlTarget.value || "").trim();
-    if (!repoValue) {
-      return;
-    }
+    if (!repoValue) return;
 
     let url;
     try {
       url = new URL(repoValue);
     } catch {
-      this.revealReadme(); // if what user enters is not a URL
+      this.revealReadme();
       return;
     }
 
     const host = url.host.toLowerCase();
-    const [_, owner, rawRepo] = (url.pathname || "").split("/");
+    const [, owner, rawRepo] = (url.pathname || "").split("/");
     if (!owner || !rawRepo) {
       this.revealReadme();
       return;
     }
-    const repo = rawRepo.replace(/\.git$/i, "");
 
+    const repo = rawRepo.replace(/\.git$/i, "");
     let readmeUrl = null;
+
     try {
       if (host === "github.com") {
         readmeUrl = await this.findGithubReadme(owner, repo);
       } else if (host === "gitlab.com") {
         readmeUrl = await this.findGitlabReadme(owner, repo);
       } else {
-        // unsupported remote
         this.revealReadme();
         return;
       }
@@ -304,31 +173,28 @@ export default class extends Controller {
       this.revealReadme();
       return;
     }
-    if (readmeUrl) {
-      if (
-        !this.readmeUrlTarget.value ||
-        this.readmeUrlTarget.dataset.autofilled
-      ) {
-        this.readmeUrlTarget.value = readmeUrl;
-        this.readmeUrlTarget.dataset.autofilled = "true";
-        this.userEditedReadme = false;
-        // unhide but disable the input (autofilled)
-        if (this.hasReadmeContainerTarget)
-          this.readmeContainerTarget.hidden = false;
-        this.readmeUrlTarget.readOnly = true;
-        // add visual lock state
-        const control = this.readmeUrlTarget.closest(".input__control");
-        if (control) control.classList.add("input__control--locked");
-        this.readmeUrlTarget.title = "Autodetected from repository (locked)";
-        this.validateUrl({ target: this.readmeUrlTarget });
-      }
-    } else {
+
+    if (!readmeUrl) {
       this.revealReadme();
+      return;
+    }
+
+    if (
+      !this.readmeUrlTarget.value ||
+      this.readmeUrlTarget.dataset.autofilled
+    ) {
+      this.readmeUrlTarget.value = readmeUrl;
+      this.readmeUrlTarget.dataset.autofilled = "true";
+      this.userEditedReadme = false;
+      this.showReadme();
+      this.setReadmeLocked(true);
+      this.validateUrl({ target: this.readmeUrlTarget });
     }
   }
 
   async findGithubReadme(owner, repo) {
     const api = `https://api.github.com/repos/${owner}/${repo}/readme`;
+
     try {
       const res = await fetch(api, {
         headers: { Accept: "application/vnd.github.v3+json" },
@@ -336,130 +202,76 @@ export default class extends Controller {
       });
       if (res.ok) {
         const json = await res.json();
-        if (json && json.download_url) return json.download_url;
+        if (json?.download_url) return json.download_url;
       }
     } catch {}
-    // we are intentionally avoiding pattern matchign
+
     return null;
   }
 
   async findGitlabReadme(owner, repo) {
     const project = encodeURIComponent(`${owner}/${repo}`);
     const api = `https://gitlab.com/api/v4/projects/${project}/repository/files/README.md?ref=HEAD`;
+
     try {
       const res = await fetch(api, { cache: "no-store" });
       if (res.ok) {
         return `https://gitlab.com/${owner}/${repo}/-/raw/HEAD/README.md`;
       }
     } catch {}
-    // we are intentionally avoiding pattern matchign
+
     return null;
   }
 
   revealReadme() {
-    if (this.hasReadmeContainerTarget)
+    this.showReadme();
+    this.setReadmeLocked(false);
+  }
+
+  restoreReadmeState() {
+    if (!this.hasReadmeUrlTarget) return;
+
+    const hasValue = (this.readmeUrlTarget.value || "").trim().length > 0;
+    if (hasValue) this.showReadme();
+
+    const autofilled = this.readmeUrlTarget.dataset.autofilled === "true";
+    this.userEditedReadme = hasValue && !autofilled;
+    this.setReadmeLocked(autofilled);
+  }
+
+  showReadme() {
+    if (this.hasReadmeContainerTarget) {
       this.readmeContainerTarget.hidden = false;
-    // succesfully reveal, but should look visually different!
-    if (this.hasReadmeUrlTarget) {
-      this.readmeUrlTarget.readOnly = false;
-      const control = this.readmeUrlTarget.closest(".input__control");
-      if (control) control.classList.remove("input__control--locked");
-      this.readmeUrlTarget.removeAttribute("title");
     }
   }
 
-  restorReadmeWhenThereIsAError() {
-    if (!this.hasReadmeContainerTarget || !this.hasReadmeUrlTarget) return;
-    const value = (this.readmeUrlTarget.value || "").trim();
-    if (!value) return;
+  setReadmeLocked(locked) {
+    if (!this.hasReadmeUrlTarget) return;
 
-    this.readmeContainerTarget.hidden = false;
-
-    if (this.readmeUrlTarget.dataset.autofilled === "true") {
-      this.readmeUrlTarget.readOnly = true;
-      const control = this.readmeUrlTarget.closest(".input__control");
-      if (control) control.classList.add("input__control--locked");
-      this.readmeUrlTarget.title = "Autodetected from repository (locked)";
-      this.userEditedReadme = false;
+    this.readmeUrlTarget.readOnly = locked;
+    if (locked) {
+      this.readmeUrlTarget.title = "Autodetected from repository";
     } else {
-      this.readmeUrlTarget.readOnly = false;
-      const control = this.readmeUrlTarget.closest(".input__control");
-      if (control) control.classList.remove("input__control--locked");
       this.readmeUrlTarget.removeAttribute("title");
-      this.userEditedReadme = true;
+    }
+
+    if (this.hasReadmeContainerTarget) {
+      this.readmeContainerTarget.classList.toggle(
+        this.readmeLockedClassValue,
+        locked,
+      );
     }
   }
 
-  // Update Declaration checkbox handlers
-  toggleUpdatePrefix() {
-    this.syncUpdateDescriptionVisibility();
-    this.rebuildPrefixes();
-  }
+  setValidity(el, message, event) {
+    el.setCustomValidity(message);
 
-  syncUpdateCheckbox() {
-    if (!this.hasDescriptionTarget || !this.hasUpdateDeclarationTarget) return;
-
-    const prefix = this.updatePrefixValue;
-    const hasPrefix = this.descriptionTarget.value.trimStart().includes(prefix);
-    const hasUpdateDescription =
-      this.hasUpdateDescriptionFieldTarget &&
-      (this.updateDescriptionFieldTarget.value || "").trim().length > 0;
-    this.updateDeclarationTarget.checked = hasPrefix || hasUpdateDescription;
-  }
-
-  syncUpdateDescriptionVisibility({ clearWhenHidden = true } = {}) {
-    if (!this.hasUpdateDescriptionContainerTarget) return;
-
-    const isChecked =
-      this.hasUpdateDeclarationTarget && this.updateDeclarationTarget.checked;
-    this.updateDescriptionContainerTarget.hidden = !isChecked;
-
-    if (!isChecked && this.hasUpdateDescriptionFieldTarget && clearWhenHidden) {
-      // Clear the field and validation when hiding
-      this.updateDescriptionFieldTarget.value = "";
-      this.updateDescriptionFieldTarget.setCustomValidity("");
-    } else if (isChecked && this.hasUpdateDescriptionFieldTarget) {
-      // Validate when showing
-      this.validateUpdateDescription();
+    if (event?.type === "blur") {
+      el.reportValidity();
+      if (message) this.triggerShake(el);
     }
   }
 
-  // Rebuild prefixes based on checkbox states
-  rebuildPrefixes() {
-    if (!this.hasDescriptionTarget) return;
-
-    const updatePrefix = this.updatePrefixValue;
-
-    // Build new prefix based on checkbox states
-    const prefixes = [];
-    if (
-      this.hasUpdateDeclarationTarget &&
-      this.updateDeclarationTarget.checked
-    ) {
-      const updateDesc = this.hasUpdateDescriptionFieldTarget
-        ? (this.updateDescriptionFieldTarget.value || "").trim()
-        : "";
-
-      if (updateDesc) {
-        prefixes.push(`${updatePrefix} ${updateDesc}`);
-      } else {
-        prefixes.push(updatePrefix);
-      }
-    }
-
-    // Use baseDescription (the original description without prefixes)
-    const combinedPrefix =
-      prefixes.length > 0 ? `${prefixes.join(", ")}  \n` : "";
-    this.descriptionTarget.value = combinedPrefix + this.baseDescription;
-
-    this.validateDescription();
-  }
-
-  escapeRegex(string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
-
-  // util
   debounce(fn, wait) {
     let t;
     return (...args) => {
@@ -469,15 +281,14 @@ export default class extends Controller {
   }
 
   triggerShake(field) {
-    const wrapper = field.closest(".input");
+    const wrapper = field.closest(
+      ".project-show__field, .ship__field, .project-show__identity",
+    );
     if (!wrapper) return;
-    // restart animation by toggling the class
-    wrapper.classList.remove("input--shake");
-    // force reflow
-    // eslint-disable-next-line no-unused-expressions
+
+    wrapper.classList.remove("project-form--shake");
     wrapper.offsetWidth;
-    wrapper.classList.add("input--shake");
-    // auto-remove after animation ends as a fallback
-    setTimeout(() => wrapper.classList.remove("input--shake"), 400);
+    wrapper.classList.add("project-form--shake");
+    setTimeout(() => wrapper.classList.remove("project-form--shake"), 400);
   }
 }

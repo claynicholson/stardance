@@ -34,9 +34,10 @@
                     multipart: true,
                     class: "project-show project-show--editing",
                     data: {
-                      turbo_frame: "project_hero",
+                      turbo_frame: "_top",
                       controller: "project-form",
-                      action: "submit->project-form#onSubmit"
+                      action: "submit->project-form#onSubmit",
+                      "project-form-readme-locked-class-value": "project-show__field--locked"
                     }) do |form| %>
         <%= hidden_field_tag :inline_project_show, "1" %>
 
@@ -116,7 +117,7 @@
                                placeholder: "What are you building?",
                                aria: { label: "Project description" },
                                data: {
-                                 action: "input->project-form#onDescriptionInput input->project-form#syncUpdateCheckbox blur->project-form#validateDescription",
+                                 action: "input->project-form#validateDescription blur->project-form#validateDescription",
                                  "project-form-target": "description"
                                } %>
 
@@ -201,6 +202,7 @@
                 <%= form.url_field :demo_url,
                                    class: "project-show__control",
                                    placeholder: "https://example.com",
+                                   inputmode: "url",
                                    data: {
                                      action: "input->project-form#validateUrl blur->project-form#validateUrl",
                                      "project-form-target": "demoUrl"
@@ -212,17 +214,21 @@
                 <%= form.url_field :repo_url,
                                    class: "project-show__control",
                                    placeholder: "https://github.com/user/repo",
+                                   inputmode: "url",
                                    data: {
                                      action: "input->project-form#onRepoInput blur->project-form#onRepoBlur",
                                      "project-form-target": "repoUrl"
                                    } %>
               </label>
 
-              <label class="project-show__field project-show__field--inline" data-project-form-target="readmeContainer">
+              <label class="project-show__field project-show__field--inline"
+                     data-project-form-target="readmeContainer"
+                     <%= "hidden" if @project.readme_url.blank? %>>
                 <span>Readme URL <span class="project-show__help" title="A raw README URL for your project page.">?</span></span>
                 <%= form.url_field :readme_url,
                                    class: "project-show__control",
                                    placeholder: "https://raw.githubusercontent.com/user/repo/main/README.md",
+                                   inputmode: "url",
                                    data: {
                                      action: "input->project-form#onReadmeInput input->project-form#validateUrl blur->project-form#validateUrl",
                                      "project-form-target": "readmeUrl"
