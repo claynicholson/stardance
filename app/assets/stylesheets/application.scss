@@ -83,3 +83,5 @@
 @use "pages/admin/_super_mega_dashboard";
 @use "pages/admin/missions" as admin_missions;
 @use "pages/admin/_voting_dashboard";
+@use "pages/notifications" as notifications_page;
+@use "pages/notification_settings" as notification_settings_page;

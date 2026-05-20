@@ -73,6 +73,12 @@ application.register("markdown-preview", MarkdownPreviewController);
 import ModalController from "./modal_controller";
 application.register("modal", ModalController);
 
+import NotificationsBadgeController from "./notifications_badge_controller";
+application.register("notifications-badge", NotificationsBadgeController);
+
+import NotificationsInboxController from "./notifications_inbox_controller";
+application.register("notifications-inbox", NotificationsInboxController);
+
 import OnboardingInterestsController from "./onboarding_interests_controller";
 application.register("onboarding-interests", OnboardingInterestsController);
 

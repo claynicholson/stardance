@@ -28,8 +28,8 @@ class SidebarComponent < ViewComponent::Base
     items = [
       { slug: "home",          label: "home",          path: helpers.home_path,
         icon: { idle: "rocket", active: "rocket_active" } },
-      { slug: "notifications", label: "notifications", path: "#",
-        icon: { idle: "bell", active: "bell_active" } },
+      { slug: "notifications", label: "notifications", path: helpers.my_notifications_path,
+        icon: { idle: "bell", active: "bell_active" }, badge: unseen_notifications_count },
       { slug: "vote",          label: "vote",          path: helpers.new_vote_path,
         icon: { idle: "box", active: "box_active" },
         locked: !user.shipped_projects.exists?,
@@ -73,5 +73,13 @@ class SidebarComponent < ViewComponent::Base
 
   def link_classes_for(item)
     [ "sidebar__nav-link", ("sidebar__nav-link--active" if active?(item)) ].compact.join(" ")
+  end
+
+  def unseen_notifications_count
+    return 0 unless user
+
+    # First-render value only; ActionCable pushes live updates after the page
+    # loads, so a brief staleness here is invisible to the user.
+    @unseen_notifications_count ||= user.notifications.unseen.count
   end
 end

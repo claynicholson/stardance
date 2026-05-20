@@ -1,0 +1,27 @@
+<li class="<%= li_classes %>" data-notification-id="<%= notification.id %>">
+  <%= button_to mark_read_my_notification_path(notification),
+                method: :post,
+                class: "notifications-item__link",
+                form: { class: "notifications-item__form", data: { turbo: false } } do %>
+    <span class="notifications-item__icon" aria-hidden="true">
+      <%= inline_svg_tag type_icon_path, class: "notifications-item__icon-svg" %>
+    </span>
+
+    <span class="notifications-item__main">
+      <% if avatar_actor %>
+        <span class="notifications-item__actors" aria-hidden="true">
+          <%= image_tag avatar_actor.avatar, alt: "", class: "notifications-item__avatar" %>
+        </span>
+      <% end %>
+
+      <span class="notifications-item__title">
+        <%= render notification.inbox_partial, notification: notification %>
+        <span class="notifications-item__time"> · <%= time_text %></span>
+      </span>
+
+      <% if notification.preview_text.present? %>
+        <span class="notifications-item__preview"><%= notification.preview_text %></span>
+      <% end %>
+    </span>
+  <% end %>
+</li>

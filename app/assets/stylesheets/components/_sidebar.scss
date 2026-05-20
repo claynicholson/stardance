@@ -154,6 +154,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  align-self: center;
   min-width: 1.4rem;
   height: 1.4rem;
   padding: 0 0.45rem;
@@ -165,6 +166,10 @@
   font-weight: 700;
   line-height: 1;
   margin-left: auto;
+
+  &[hidden] {
+    display: none;
+  }
 }
 
 button.sidebar__nav-link {
@@ -330,6 +335,8 @@ button.sidebar__nav-link {
   white-space: nowrap;
   flex-shrink: 0;
   margin-left: var(--space-xs);
+  line-height: 1;
+  transform: translateY(var(--nav-label-optical-offset));
 }
 
 .sidebar__user {

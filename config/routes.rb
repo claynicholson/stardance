@@ -524,6 +524,17 @@ Rails.application.routes.draw do
     resource :balance, only: [ :show ]
     resource :settings, only: [ :update ]
     resources :dismissals, only: [ :create ]
+    resources :notifications, only: [ :index ] do
+      collection do
+        post :mark_all_seen
+        post :mark_all_read
+        delete :clear_all
+      end
+      member do
+        post :mark_read
+      end
+    end
+    resource :notification_settings, only: [ :show, :update ], controller: "notification_settings"
   end
   get "my/achievements", to: "achievements#index", as: :my_achievements
 

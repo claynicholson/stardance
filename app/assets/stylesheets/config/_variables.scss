@@ -193,6 +193,13 @@
   --space-xxl: 2.5rem; // 40px
   --space-xxxl: 3rem; // 48px
   --space-xxxxl: 4rem; // 64px
+
+  // Manual optical-centering offset for Exo 2 text against the larger sidebar
+  // nav icons. The font's ascender takes up more space than its descender, so
+  // `align-items: center` lands the glyphs slightly low against the icon's
+  // visual midline. Empirically tuned at the current type scale; revisit if
+  // --font-size-xxxl or the sidebar icon size changes.
+  --nav-label-optical-offset: -5px;
 }
 
 // Mobile shrinks for the landing typography scale.
