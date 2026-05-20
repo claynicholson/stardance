@@ -1,0 +1,6 @@
+<span class="notifications-item__verb">Payout issued:</span>
+<strong><%= notification.params["stardust"] %> stardust</strong>
+<% if notification.params["project_title"].present? %>
+  <span class="notifications-item__verb">for</span>
+  <span class="notifications-item__actor"><%= notification.params["project_title"] %></span>
+<% end %>

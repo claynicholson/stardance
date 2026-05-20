@@ -1,0 +1,10 @@
+<% if notification.actor %>
+  <%= link_to "@#{notification.actor.display_name}", user_path(notification.actor), class: "notifications-item__actor" %>
+<% else %>
+  <span class="notifications-item__actor">A builder</span>
+<% end %>
+<span class="notifications-item__verb"> submitted a ship event for your review</span>
+<% if notification.record && notification.record.mission %>
+  <span class="notifications-item__verb">on</span>
+  <%= link_to notification.record.mission.name, mission_path(notification.record.mission), class: "notifications-item__actor" %>
+<% end %>

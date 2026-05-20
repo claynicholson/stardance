@@ -1,0 +1,15 @@
+<% if notification.actor %>
+  <%= link_to "@#{notification.actor.display_name}", user_path(notification.actor), class: "notifications-item__actor" %>
+<% else %>
+  <span class="notifications-item__actor">Someone</span>
+<% end %>
+<% others = notification.group_count.to_i - 1 %>
+<% if others > 0 %>
+  <span class="notifications-item__verb"> and</span> <strong><%= pluralize(others, "other") %></strong>
+<% end %>
+<span class="notifications-item__verb"> started following</span>
+<% if notification.record %>
+  <%= link_to notification.record.title, project_path(notification.record), class: "notifications-item__actor" %>
+<% else %>
+  <span class="notifications-item__verb">a project</span>
+<% end %>

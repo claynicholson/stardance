@@ -2,42 +2,41 @@
 #
 # Table name: users
 #
-#  id                           :bigint           not null, primary key
-#  age_attestation              :string
-#  banned                       :boolean          default(FALSE), not null
-#  banned_at                    :datetime
-#  banned_reason                :text
-#  bio                          :text
-#  display_name                 :string
-#  email                        :string
-#  enriched_ref                 :string
-#  experience_level             :string
-#  first_name                   :string
-#  granted_roles                :string           default([]), not null, is an Array
-#  has_gotten_free_stickers     :boolean          default(FALSE)
-#  has_pending_achievements     :boolean          default(FALSE), not null
-#  hcb_email                    :string
-#  interests                    :string           default([]), is an Array
-#  internal_notes               :text
-#  last_name                    :string
-#  manual_ysws_override         :boolean
-#  mission_review_notifications :boolean          default(TRUE), not null
-#  onboarded_at                 :datetime
-#  ref                          :string
-#  regions                      :string           default([]), is an Array
-#  session_token                :string
-#  shop_region                  :enum
-#  synced_at                    :datetime
-#  things_dismissed             :string           default([]), not null, is an Array
-#  tutorial_steps_completed     :string           default([]), is an Array
-#  verification_status          :string           default("needs_submission"), not null
-#  vote_balance                 :integer          default(0), not null
-#  votes_count                  :integer
-#  voting_locked                :boolean          default(FALSE), not null
-#  ysws_eligible                :boolean          default(FALSE), not null
-#  created_at                   :datetime         not null
-#  updated_at                   :datetime         not null
-#  slack_id                     :string
+#  id                       :bigint           not null, primary key
+#  age_attestation          :string
+#  banned                   :boolean          default(FALSE), not null
+#  banned_at                :datetime
+#  banned_reason            :text
+#  bio                      :text
+#  display_name             :string
+#  email                    :string
+#  enriched_ref             :string
+#  experience_level         :string
+#  first_name               :string
+#  granted_roles            :string           default([]), not null, is an Array
+#  has_gotten_free_stickers :boolean          default(FALSE)
+#  has_pending_achievements :boolean          default(FALSE), not null
+#  hcb_email                :string
+#  interests                :string           default([]), is an Array
+#  internal_notes           :text
+#  last_name                :string
+#  manual_ysws_override     :boolean
+#  onboarded_at             :datetime
+#  ref                      :string
+#  regions                  :string           default([]), is an Array
+#  session_token            :string
+#  shop_region              :enum
+#  synced_at                :datetime
+#  things_dismissed         :string           default([]), not null, is an Array
+#  tutorial_steps_completed :string           default([]), is an Array
+#  verification_status      :string           default("needs_submission"), not null
+#  vote_balance             :integer          default(0), not null
+#  votes_count              :integer
+#  voting_locked            :boolean          default(FALSE), not null
+#  ysws_eligible            :boolean          default(FALSE), not null
+#  created_at               :datetime         not null
+#  updated_at               :datetime         not null
+#  slack_id                 :string
 #
 # Indexes
 #
@@ -77,6 +76,10 @@ class User < ApplicationRecord
   has_many :follows_as_followed, class_name: "Follow", foreign_key: :followed_id, dependent: :destroy, inverse_of: :followed
   has_many :following, through: :follows_as_follower, source: :followed
   has_many :followers, through: :follows_as_followed, source: :follower
+
+  has_many :notifications, foreign_key: :recipient_id, dependent: :destroy, inverse_of: :recipient
+  has_many :actor_notifications, class_name: "Notification", foreign_key: :actor_id, dependent: :nullify, inverse_of: :actor
+  has_many :notification_preferences, class_name: "User::NotificationPreference", dependent: :destroy
 
   has_many :mission_memberships, class_name: "Mission::Membership", dependent: :destroy
   has_many :owned_missions,      -> { merge(Mission::Membership.owner_role) },
