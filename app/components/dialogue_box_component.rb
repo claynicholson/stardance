@@ -8,7 +8,7 @@ class DialogueBoxComponent < ViewComponent::Base
     @sticker = if sticker.present?
       sticker
     elsif show_sticker
-      "free_sticker.png"
+      "free_sticker.avif"
     end
     @sticker_line_index = sticker_line_index
     @redirect_url = redirect_url

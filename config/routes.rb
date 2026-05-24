@@ -513,9 +513,6 @@ Rails.application.routes.draw do
   # Home
   get "home", to: "home#index"
 
-  # Command Palette
-  get "commands", to: "commands#index"
-
   # Leaderboard
   get "leaderboard", to: "leaderboard#index"
 
@@ -525,7 +522,9 @@ Rails.application.routes.draw do
   # My
   namespace :my do
     resource :balance, only: [ :show ]
-    resource :settings, only: [ :update ]
+    resource :settings, only: [ :update ] do
+      post :streamer_mode, on: :member, action: :toggle_streamer_mode
+    end
     resources :dismissals, only: [ :create ]
   end
   get "my/achievements", to: "achievements#index", as: :my_achievements

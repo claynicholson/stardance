@@ -57,8 +57,7 @@
 @use "components/vimeo_embed";
 @use "components/command_palette";
 
-// Themes
-@use "themes/christmas";
+@use "components/streamer_mode";
 
 // Pages
 @use "pages/onboarding" as onboarding_pages;
